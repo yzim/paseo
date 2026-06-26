@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   type DaemonLaunchRuntime,
   type DetachedDaemonProcess,
+  resolveDaemonLaunchExecPath,
   resolveLocalDaemonState,
   startLocalDaemonDetached,
   startLocalDaemonForeground,
@@ -69,6 +70,19 @@ class FakeDaemonRuntime implements DaemonLaunchRuntime {
 }
 
 const tempRoots: string[] = [];
+const originalPlatform = process.platform;
+const originalExecPath = process.execPath;
+
+function setProcessRuntime(input: { platform: NodeJS.Platform; execPath: string }): void {
+  Object.defineProperty(process, "platform", {
+    configurable: true,
+    value: input.platform,
+  });
+  Object.defineProperty(process, "execPath", {
+    configurable: true,
+    value: input.execPath,
+  });
+}
 
 async function createPaseoHome(config: unknown): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "paseo-local-daemon-"));
@@ -96,6 +110,21 @@ describe("local daemon launch supervision", () => {
   afterEach(async () => {
     await Promise.all(
       tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
+    );
+    setProcessRuntime({
+      platform: originalPlatform,
+      execPath: originalExecPath,
+    });
+  });
+
+  test("packaged macOS CLI uses the Helper executable for daemon launches", () => {
+    setProcessRuntime({
+      platform: "darwin",
+      execPath: "/Applications/Paseo.app/Contents/MacOS/Paseo",
+    });
+
+    expect(resolveDaemonLaunchExecPath()).toBe(
+      "/Applications/Paseo.app/Contents/Frameworks/Paseo Helper.app/Contents/MacOS/Paseo Helper",
     );
   });
 

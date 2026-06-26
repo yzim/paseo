@@ -182,7 +182,10 @@ jobs:
           )
           npm run build:server:clean
           npm run build:main --workspace=@getpaseo/desktop
-          npx electron-builder --projectDir packages/desktop --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false -c.afterSign=
+          (
+            cd packages/desktop
+            npx electron-builder --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false -c.afterSign=
+          )
 
       - name: Upload desktop artifacts to release
         if: env.SHOULD_PUBLISH == 'true' && env.IS_SMOKE_TAG != 'true'

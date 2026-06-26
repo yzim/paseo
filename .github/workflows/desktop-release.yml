@@ -184,7 +184,7 @@ jobs:
           npm run build:main --workspace=@getpaseo/desktop
           (
             cd packages/desktop
-            npx electron-builder --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false -c.afterSign=
+            npx electron-builder --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false
           )
 
       - name: Upload desktop artifacts to release

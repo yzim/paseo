@@ -148,6 +148,7 @@ jobs:
           NODE
 
       - name: Build desktop release
+        if: env.SHOULD_PUBLISH == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -163,19 +164,25 @@ jobs:
           build_args=(-- --publish never --mac --${{ matrix.electron_arch }})
           build_args+=("-c.publish.releaseType=$RELEASE_TYPE")
           build_args+=("-c.publish.channel=$RELEASE_CHANNEL")
-          if [[ "$SHOULD_PUBLISH" != "true" ]]; then
-            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
-            npm run build:app-deps:clean
-            (
-              cd packages/app
-              PASEO_WEB_PLATFORM=electron npx expo export --platform web
-            )
-            npm run build:server:clean
-            npm run build:main --workspace=@getpaseo/desktop
-            npx electron-builder --projectDir packages/desktop --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false -c.afterSign=
-            exit 0
-          fi
           npm run build:desktop "${build_args[@]}"
+
+      - name: Build desktop release (unsigned)
+        if: env.SHOULD_PUBLISH != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_GH_IGNORE_TIME: true
+          PASEO_DESKTOP_SMOKE: "1"
+        run: |
+          set -euo pipefail
+          npm run build:app-deps:clean
+          (
+            cd packages/app
+            PASEO_WEB_PLATFORM=electron npx expo export --platform web
+          )
+          npm run build:server:clean
+          npm run build:main --workspace=@getpaseo/desktop
+          npx electron-builder --projectDir packages/desktop --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false -c.afterSign=
 
       - name: Upload desktop artifacts to release
         if: env.SHOULD_PUBLISH == 'true' && env.IS_SMOKE_TAG != 'true'

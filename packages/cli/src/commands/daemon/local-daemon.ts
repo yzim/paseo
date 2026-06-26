@@ -116,6 +116,31 @@ const startupExited = (details: ProcessExitDetails): DetachedStartupResult => ({
   ...details,
 });
 
+export function resolveDaemonLaunchExecPath(): string {
+  if (process.platform === "darwin") {
+    const marker = ".app/Contents/MacOS/";
+    const markerIndex = process.execPath.indexOf(marker);
+    if (markerIndex !== -1) {
+      const bundleRoot = process.execPath.substring(0, markerIndex + ".app".length);
+      const name = path.basename(process.execPath);
+      const helperPath = path.posix.join(
+        bundleRoot,
+        "Contents",
+        "Frameworks",
+        `${name} Helper.app`,
+        "Contents",
+        "MacOS",
+        `${name} Helper`,
+      );
+      if (existsSync(helperPath)) {
+        return helperPath;
+      }
+    }
+  }
+
+  return process.execPath;
+}
+
 function envWithHome(home?: string): NodeJS.ProcessEnv {
   if (!home) {
     return process.env;
@@ -574,7 +599,7 @@ export async function startLocalDaemonDetached(
   const paseoHome = runtime.resolveHome(childEnv);
   const logPath = path.join(paseoHome, DAEMON_LOG_FILENAME);
   const child = runtime.spawnDetached(
-    process.execPath,
+    resolveDaemonLaunchExecPath(),
     [...process.execArgv, daemonRunnerEntry, ...buildRunnerArgs(options)],
     {
       detached: true,
@@ -640,7 +665,7 @@ export function startLocalDaemonForeground(
   const daemonRunnerEntry = runtime.resolveRunnerEntry();
   const childEnv = buildChildEnv(options);
   const result = runtime.spawnForeground(
-    process.execPath,
+    resolveDaemonLaunchExecPath(),
     [...process.execArgv, daemonRunnerEntry, ...buildRunnerArgs(options)],
     {
       env: childEnv,

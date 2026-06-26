@@ -165,9 +165,15 @@ jobs:
           build_args+=("-c.publish.channel=$RELEASE_CHANNEL")
           if [[ "$SHOULD_PUBLISH" != "true" ]]; then
             unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
-            build_args+=("-c.mac.identity=null")
-            build_args+=("-c.mac.notarize=false")
-            build_args+=("-c.afterSign=")
+            npm run build:app-deps:clean
+            (
+              cd packages/app
+              PASEO_WEB_PLATFORM=electron npx expo export --platform web
+            )
+            npm run build:server:clean
+            npm run build:main --workspace=@getpaseo/desktop
+            npx electron-builder --projectDir packages/desktop --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false -c.afterSign=
+            exit 0
           fi
           npm run build:desktop "${build_args[@]}"
 

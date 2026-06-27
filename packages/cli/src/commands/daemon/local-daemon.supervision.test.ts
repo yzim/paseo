@@ -13,6 +13,18 @@ import {
   startLocalDaemonForeground,
 } from "./local-daemon.js";
 
+const mocks = vi.hoisted(() => ({
+  existsSync: vi.fn(),
+}));
+
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    existsSync: mocks.existsSync,
+  };
+});
+
 type RecordedDaemonLaunch =
   | {
       mode: "detached";
@@ -105,12 +117,14 @@ function expectSupervisorLaunch(argv: string[]): void {
 describe("local daemon launch supervision", () => {
   beforeEach(() => {
     vi.useRealTimers();
+    mocks.existsSync.mockReturnValue(true);
   });
 
   afterEach(async () => {
     await Promise.all(
       tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
     );
+    vi.restoreAllMocks();
     setProcessRuntime({
       platform: originalPlatform,
       execPath: originalExecPath,

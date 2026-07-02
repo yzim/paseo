@@ -36,7 +36,18 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        run: npx oxfmt --check .
+        run: |
+          if ! npx oxfmt --check .; then
+            echo "::group::git diff --stat"
+            git diff --stat
+            echo "::endgroup::"
+
+            echo "::group::git diff"
+            git diff -- . ':(exclude)package-lock.json'
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
   lint:
     runs-on: ubuntu-latest
@@ -78,10 +89,28 @@ jobs:
         run: npm ci
 
       - name: Build server stack
-        run: npm run build:server
+        run: |
+          if ! npm run build:server; then
+            echo "::group::packages/highlight/package.json"
+            cat packages/highlight/package.json
+            echo "::endgroup::"
+
+            echo "::group::npm ls @replit/codemirror-lang-csharp"
+            npm ls @replit/codemirror-lang-csharp || true
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
       - name: Typecheck all packages
-        run: npm run typecheck
+        run: |
+          if ! npm run typecheck; then
+            echo "::group::git status"
+            git status --short
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
       - name: Verify public package contents
         run: |

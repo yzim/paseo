@@ -7,6 +7,9 @@ import { afterEach, describe, expect, test } from "vitest";
 import { loadConfig, resolveBundledWebUiDistDir } from "./config.js";
 
 const roots: string[] = [];
+const originalResourcesPath = process.resourcesPath;
+const originalElectronRunAsNode = process.env.ELECTRON_RUN_AS_NODE;
+const originalPaseoNodeEnv = process.env.PASEO_NODE_ENV;
 
 async function createPaseoHome(config: unknown): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "paseo-config-web-ui-"));
@@ -25,6 +28,17 @@ function expectBundledWebUiDistDir(distDir: string | null): void {
 
 describe("daemon web UI config", () => {
   afterEach(async () => {
+    process.resourcesPath = originalResourcesPath;
+    if (originalElectronRunAsNode === undefined) {
+      delete process.env.ELECTRON_RUN_AS_NODE;
+    } else {
+      process.env.ELECTRON_RUN_AS_NODE = originalElectronRunAsNode;
+    }
+    if (originalPaseoNodeEnv === undefined) {
+      delete process.env.PASEO_NODE_ENV;
+    } else {
+      process.env.PASEO_NODE_ENV = originalPaseoNodeEnv;
+    }
     await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
   });
 
@@ -65,6 +79,29 @@ describe("daemon web UI config", () => {
     expect(resolveBundledWebUiDistDir(moduleUrl)).toBe(
       path.join(packageRoot, "dist", "server", "web-ui"),
     );
+  });
+
+  test("resolves packaged desktop web UI dist dir from compiled server modules", async () => {
+    const packageRoot = await mkdtemp(path.join(os.tmpdir(), "paseo-config-web-ui-packaged-"));
+    roots.push(packageRoot);
+    await mkdir(path.join(packageRoot, "app-dist"), { recursive: true });
+    process.env.ELECTRON_RUN_AS_NODE = "1";
+    process.env.PASEO_NODE_ENV = "production";
+    process.resourcesPath = packageRoot;
+    const moduleUrl = pathToFileURL(
+      path.join(
+        packageRoot,
+        "app.asar",
+        "node_modules",
+        "@getpaseo",
+        "server",
+        "dist",
+        "server",
+        "config.js",
+      ),
+    );
+
+    expect(resolveBundledWebUiDistDir(moduleUrl)).toBe(path.join(packageRoot, "app-dist"));
   });
 
   test("PASEO_WEB_UI_ENABLED overrides persisted setting", async () => {

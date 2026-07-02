@@ -40,10 +40,28 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Update lockfile + Nix hash if stale
-        run: ./scripts/update-nix.sh
+        run: |
+          if ! ./scripts/update-nix.sh; then
+            echo "::group::git diff --stat"
+            git diff --stat
+            echo "::endgroup::"
+
+            echo "::group::git diff"
+            git diff
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
       - name: Build Nix package
-        run: nix build .#default -o result
+        run: |
+          if ! nix build .#default -o result; then
+            echo "::group::git status"
+            git status --short
+            echo "::endgroup::"
+
+            exit 1
+          fi
 
       - name: Smoke Nix daemon
         run: |

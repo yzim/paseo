@@ -40,17 +40,17 @@ export function resolveBundledWebUiDistDir(moduleUrl: string | URL = import.meta
     path.basename(path.dirname(moduleDir)) === "server" &&
     path.basename(path.dirname(path.dirname(moduleDir))) === "dist"
   ) {
+    const appDistDir =
+      typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath === "string"
+        ? path.join((process as NodeJS.Process & { resourcesPath?: string }).resourcesPath!, "app-dist")
+        : null;
+
     if (
-      typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath === "string" &&
-      existsSync(
-        path.join((process as NodeJS.Process & { resourcesPath?: string }).resourcesPath!, "app-dist"),
-      )
+      appDistDir &&
+      existsSync(appDistDir)
     ) {
       // Packaged desktop/CLI builds execute the server from app.asar and bundle the Web UI in app-dist.
-      return path.join(
-        (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath!,
-        "app-dist",
-      );
+      return appDistDir;
     }
 
     return path.resolve(moduleDir, "..", "web-ui");

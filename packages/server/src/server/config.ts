@@ -53,9 +53,7 @@ export function resolveBundledWebUiDistDir(moduleUrl: string | URL = import.meta
       );
     }
 
-    if (existsSync(path.resolve(moduleDir, "..", "web-ui"))) {
-      return path.resolve(moduleDir, "..", "web-ui");
-    }
+    return path.resolve(moduleDir, "..", "web-ui");
   }
 
   return path.resolve(moduleDir, "web-ui");

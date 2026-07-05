@@ -54,22 +54,6 @@ export function resolveBundledWebUiDistDir(moduleUrl: string | URL = import.meta
 
   if (
     path.basename(moduleDir) === "server" &&
-    path.basename(path.dirname(moduleDir)) === "dist" &&
-    path
-      .dirname(moduleDir)
-      .endsWith(path.join("app.asar", "node_modules", "@getpaseo", "server", "dist")) &&
-    process.env.ELECTRON_RUN_AS_NODE === "1" &&
-    resolvePaseoNodeEnv(process.env) === "production" &&
-    typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath === "string"
-  ) {
-    return path.join(
-      (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath!,
-      "app-dist",
-    );
-  }
-
-  if (
-    path.basename(moduleDir) === "server" &&
     path.basename(path.dirname(moduleDir)) === "server" &&
     path.basename(path.dirname(path.dirname(moduleDir))) === "dist"
   ) {

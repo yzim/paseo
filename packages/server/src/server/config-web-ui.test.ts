@@ -97,6 +97,7 @@ describe("daemon web UI config", () => {
         "server",
         "dist",
         "server",
+        "server",
         "config.js",
       ),
     );

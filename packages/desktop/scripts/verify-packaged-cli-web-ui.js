@@ -63,9 +63,9 @@ async function main() {
         child,
         daemonLogPath,
       });
-      return;
+    } else {
+      fs.rmSync(homeDir, { recursive: true, force: true });
     }
-    fs.rmSync(homeDir, { recursive: true, force: true });
   }
 }
 
@@ -197,13 +197,7 @@ function isConnectionError(error) {
   return /ECONNREFUSED|fetch failed|UND_ERR_CONNECT_TIMEOUT|EADDRNOTAVAIL/i.test(error.message);
 }
 
-function reportFailureDiagnostics({
-  absoluteAppPath,
-  appDistDir,
-  cliPath,
-  child,
-  daemonLogPath,
-}) {
+function reportFailureDiagnostics({ absoluteAppPath, appDistDir, cliPath, child, daemonLogPath }) {
   const daemonLog = safeReadTextFile(daemonLogPath);
 
   console.error(

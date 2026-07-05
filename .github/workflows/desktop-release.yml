@@ -148,6 +148,7 @@ jobs:
           NODE
 
       - name: Build desktop release
+        if: env.SHOULD_PUBLISH == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -164,6 +165,38 @@ jobs:
           build_args+=("-c.publish.releaseType=$RELEASE_TYPE")
           build_args+=("-c.publish.channel=$RELEASE_CHANNEL")
           npm run build:desktop "${build_args[@]}"
+
+      - name: Build desktop release (unsigned)
+        if: env.SHOULD_PUBLISH != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_GH_IGNORE_TIME: true
+          PASEO_DESKTOP_SMOKE: "1"
+        run: |
+          set -euo pipefail
+          npm run build:app-deps:clean
+          (
+            cd packages/app
+            PASEO_WEB_PLATFORM=electron npx expo export --platform web
+          )
+          npm run build:server:clean
+          npm run build:main --workspace=@getpaseo/desktop
+          (
+            cd packages/desktop
+            npx electron-builder --config electron-builder.yml --publish never --mac --${{ matrix.electron_arch }} -c.publish.releaseType="$RELEASE_TYPE" -c.publish.channel="$RELEASE_CHANNEL" -c.mac.identity=null -c.mac.notarize=false
+          )
+
+      - name: Verify packaged CLI web UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path="$(find "${DESKTOP_PACKAGE_PATH}/release" -maxdepth 2 -name 'Paseo.app' -print -quit)"
+          if [[ -z "${app_path}" ]]; then
+            echo "::error::Could not find built Paseo.app under ${DESKTOP_PACKAGE_PATH}/release"
+            exit 1
+          fi
+          node "${DESKTOP_PACKAGE_PATH}/scripts/verify-packaged-cli-web-ui.js" --app "${app_path}"
 
       - name: Upload desktop artifacts to release
         if: env.SHOULD_PUBLISH == 'true' && env.IS_SMOKE_TAG != 'true'
@@ -188,7 +221,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-macos-${{ matrix.electron_arch }}
-          path: ${{ env.DESKTOP_PACKAGE_PATH }}/release/*.dmg
+          path: ${{ env.DESKTOP_PACKAGE_PATH }}/release/*
           retention-days: 7
 
       - name: Upload manifest artifact
@@ -262,6 +295,12 @@ jobs:
           build_args+=("-c.publish.releaseType=$RELEASE_TYPE")
           build_args+=("-c.publish.channel=$RELEASE_CHANNEL")
           npm run build:desktop "${build_args[@]}"
+
+      - name: Verify packaged CLI web UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "${DESKTOP_PACKAGE_PATH}/scripts/verify-packaged-cli-web-ui.js" --app "${DESKTOP_PACKAGE_PATH}/release/linux-unpacked"
 
       - name: Upload desktop artifacts to release
         if: env.SHOULD_PUBLISH == 'true' && env.IS_SMOKE_TAG != 'true'
@@ -357,6 +396,11 @@ jobs:
           build_args+=("-c.publish.releaseType=$RELEASE_TYPE")
           build_args+=("-c.publish.channel=$RELEASE_CHANNEL")
           npm run build:desktop "${build_args[@]}"
+
+      - name: Verify packaged CLI web UI
+        shell: pwsh
+        run: |
+          node "${env:DESKTOP_PACKAGE_PATH}/scripts/verify-packaged-cli-web-ui.js" --app "${env:DESKTOP_PACKAGE_PATH}/release/win-unpacked"
 
       - name: Upload desktop artifacts to release
         if: env.SHOULD_PUBLISH == 'true' && env.IS_SMOKE_TAG != 'true'

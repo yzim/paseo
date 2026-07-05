@@ -8,6 +8,8 @@ on:
       - "desktop-macos-v*"
       - "desktop-linux-v*"
       - "desktop-windows-v*"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       tag:
@@ -49,8 +51,8 @@ concurrency:
 
 env:
   SOURCE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
-  CHECKOUT_REF: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.checkout_ref || github.ref_name) || github.ref_name }}
-  SHOULD_PUBLISH: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.publish != 'false' }}
+  CHECKOUT_REF: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.checkout_ref || github.ref_name) || github.sha }}
+  SHOULD_PUBLISH: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish != 'false') }}
   ROLLOUT_HOURS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.rollout_hours || '36' }}
   DESKTOP_PACKAGE_PATH: "packages/desktop"
 
@@ -93,7 +95,7 @@ jobs:
 
   publish-macos:
     needs: [create-release]
-    if: ${{ always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && ((github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos')) || (github.event_name == 'push' && (startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'desktop-v') || startsWith(github.ref_name, 'desktop-macos-v')))) }}
+    if: ${{ always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos')) || (github.event_name == 'push' && (startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'desktop-v') || startsWith(github.ref_name, 'desktop-macos-v')))) }}
     strategy:
       fail-fast: false
       matrix:
@@ -114,8 +116,30 @@ jobs:
           ref: ${{ env.CHECKOUT_REF }}
 
       - name: Resolve release metadata
+        if: github.event_name != 'pull_request'
         shell: bash
         run: node scripts/emit-release-env.mjs --source-tag "$SOURCE_TAG" >> "$GITHUB_ENV"
+
+      - name: Resolve PR build metadata
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          node <<'NODE' >> "$GITHUB_ENV"
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8"));
+          process.stdout.write(`SOURCE_TAG=pr-${process.env.GITHUB_EVENT_NUMBER}\n`);
+          process.stdout.write(`RELEASE_TAG=pr-${process.env.GITHUB_EVENT_NUMBER}\n`);
+          process.stdout.write(`RELEASE_VERSION=${packageJson.version}\n`);
+          process.stdout.write(`RELEASE_BASE_VERSION=${packageJson.version}\n`);
+          process.stdout.write("RELEASE_PRERELEASE=\n");
+          process.stdout.write("IS_PRERELEASE=false\n");
+          process.stdout.write("IS_BETA=false\n");
+          process.stdout.write("RELEASE_TYPE=release\n");
+          process.stdout.write("RELEASE_CHANNEL=latest\n");
+          process.stdout.write(`DESKTOP_VERSION=${packageJson.version}\n`);
+          process.stdout.write("IS_SMOKE_TAG=true\n");
+          NODE
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -234,7 +258,7 @@ jobs:
 
   publish-linux:
     needs: [create-release]
-    if: ${{ always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && ((github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux')) || (github.event_name == 'push' && (startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'desktop-v') || startsWith(github.ref_name, 'desktop-linux-v')))) }}
+    if: ${{ always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux')) || (github.event_name == 'push' && (startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'desktop-v') || startsWith(github.ref_name, 'desktop-linux-v')))) }}
     permissions:
       contents: write
       packages: read
@@ -247,8 +271,30 @@ jobs:
           ref: ${{ env.CHECKOUT_REF }}
 
       - name: Resolve release metadata
+        if: github.event_name != 'pull_request'
         shell: bash
         run: node scripts/emit-release-env.mjs --source-tag "$SOURCE_TAG" >> "$GITHUB_ENV"
+
+      - name: Resolve PR build metadata
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          node <<'NODE' >> "$GITHUB_ENV"
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8"));
+          process.stdout.write(`SOURCE_TAG=pr-${process.env.GITHUB_EVENT_NUMBER}\n`);
+          process.stdout.write(`RELEASE_TAG=pr-${process.env.GITHUB_EVENT_NUMBER}\n`);
+          process.stdout.write(`RELEASE_VERSION=${packageJson.version}\n`);
+          process.stdout.write(`RELEASE_BASE_VERSION=${packageJson.version}\n`);
+          process.stdout.write("RELEASE_PRERELEASE=\n");
+          process.stdout.write("IS_PRERELEASE=false\n");
+          process.stdout.write("IS_BETA=false\n");
+          process.stdout.write("RELEASE_TYPE=release\n");
+          process.stdout.write("RELEASE_CHANNEL=latest\n");
+          process.stdout.write(`DESKTOP_VERSION=${packageJson.version}\n`);
+          process.stdout.write("IS_SMOKE_TAG=true\n");
+          NODE
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -338,7 +384,7 @@ jobs:
 
   publish-windows:
     needs: [create-release]
-    if: ${{ always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && ((github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows')) || (github.event_name == 'push' && (startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'desktop-v') || startsWith(github.ref_name, 'desktop-windows-v')))) }}
+    if: ${{ always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') && (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows')) || (github.event_name == 'push' && (startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'desktop-v') || startsWith(github.ref_name, 'desktop-windows-v')))) }}
     permissions:
       contents: write
       packages: read
@@ -351,8 +397,30 @@ jobs:
           ref: ${{ env.CHECKOUT_REF }}
 
       - name: Resolve release metadata
+        if: github.event_name != 'pull_request'
         shell: bash
         run: node scripts/emit-release-env.mjs --source-tag "$SOURCE_TAG" >> "$GITHUB_ENV"
+
+      - name: Resolve PR build metadata
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          node <<'NODE' >> "$GITHUB_ENV"
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8"));
+          process.stdout.write(`SOURCE_TAG=pr-${process.env.GITHUB_EVENT_NUMBER}\n`);
+          process.stdout.write(`RELEASE_TAG=pr-${process.env.GITHUB_EVENT_NUMBER}\n`);
+          process.stdout.write(`RELEASE_VERSION=${packageJson.version}\n`);
+          process.stdout.write(`RELEASE_BASE_VERSION=${packageJson.version}\n`);
+          process.stdout.write("RELEASE_PRERELEASE=\n");
+          process.stdout.write("IS_PRERELEASE=false\n");
+          process.stdout.write("IS_BETA=false\n");
+          process.stdout.write("RELEASE_TYPE=release\n");
+          process.stdout.write("RELEASE_CHANNEL=latest\n");
+          process.stdout.write(`DESKTOP_VERSION=${packageJson.version}\n`);
+          process.stdout.write("IS_SMOKE_TAG=true\n");
+          NODE
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -438,7 +506,7 @@ jobs:
 
   finalize-rollout:
     needs: [publish-macos, publish-linux, publish-windows]
-    if: ${{ always() && (needs.publish-macos.result == 'success' || needs.publish-macos.result == 'skipped') && (needs.publish-linux.result == 'success' || needs.publish-linux.result == 'skipped') && (needs.publish-windows.result == 'success' || needs.publish-windows.result == 'skipped') && (github.event_name != 'workflow_dispatch' || github.event.inputs.publish != 'false') }}
+    if: ${{ always() && (needs.publish-macos.result == 'success' || needs.publish-macos.result == 'skipped') && (needs.publish-linux.result == 'success' || needs.publish-linux.result == 'skipped') && (needs.publish-windows.result == 'success' || needs.publish-windows.result == 'skipped') && github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || github.event.inputs.publish != 'false') }}
     permissions:
       contents: write
     runs-on: ubuntu-latest

@@ -217,7 +217,7 @@ jobs:
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber --repo "${{ github.repository }}"
 
       - name: Upload desktop artifacts to workflow
-        if: env.SHOULD_PUBLISH != 'true'
+        if: ${{ always() && env.SHOULD_PUBLISH != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: desktop-macos-${{ matrix.electron_arch }}
@@ -321,7 +321,7 @@ jobs:
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber --repo "${{ github.repository }}"
 
       - name: Upload desktop artifacts to workflow
-        if: env.SHOULD_PUBLISH != 'true'
+        if: ${{ always() && env.SHOULD_PUBLISH != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux
@@ -421,7 +421,7 @@ jobs:
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber --repo "${{ github.repository }}"
 
       - name: Upload desktop artifacts to workflow
-        if: env.SHOULD_PUBLISH != 'true'
+        if: ${{ always() && env.SHOULD_PUBLISH != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows

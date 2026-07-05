@@ -23,6 +23,7 @@ async function main() {
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "paseo-packaged-cli-webui-"));
   const daemonLogPath = path.join(homeDir, "daemon.log");
   const child = spawnCli(cliPath, homeDir, port);
+  let verificationError = null;
 
   try {
     await waitForHttpOk({ child, port });
@@ -49,8 +50,21 @@ async function main() {
         2,
       ),
     );
+  } catch (error) {
+    verificationError = error;
+    throw error;
   } finally {
     await terminateChild(child);
+    if (verificationError) {
+      reportFailureDiagnostics({
+        absoluteAppPath,
+        appDistDir,
+        cliPath,
+        child,
+        daemonLogPath,
+      });
+      return;
+    }
     fs.rmSync(homeDir, { recursive: true, force: true });
   }
 }
@@ -181,6 +195,39 @@ function isConnectionError(error) {
     return false;
   }
   return /ECONNREFUSED|fetch failed|UND_ERR_CONNECT_TIMEOUT|EADDRNOTAVAIL/i.test(error.message);
+}
+
+function reportFailureDiagnostics({
+  absoluteAppPath,
+  appDistDir,
+  cliPath,
+  child,
+  daemonLogPath,
+}) {
+  const daemonLog = safeReadTextFile(daemonLogPath);
+
+  console.error(
+    JSON.stringify(
+      {
+        appPath: absoluteAppPath,
+        cliPath,
+        distDir: appDistDir,
+        daemonLogPath,
+        daemonLog,
+        childExit: child.__paseoExit ?? null,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function safeReadTextFile(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (error) {
+    return `<<unable to read ${filePath}: ${error instanceof Error ? error.message : String(error)}>>`;
+  }
 }
 
 async function terminateChild(child) {

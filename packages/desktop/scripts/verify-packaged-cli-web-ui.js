@@ -173,7 +173,7 @@ async function waitForHttpOk({ child, port }) {
     try {
       const response = await fetch(`http://127.0.0.1:${port}/`);
       const body = await response.text();
-      if (response.ok && body.includes("<!DOCTYPE html")) {
+      if (response.ok && body.toLowerCase().includes("<!doctype html")) {
         return;
       }
       throw new Error(`Unexpected response ${response.status}: ${body.slice(0, 400)}`);

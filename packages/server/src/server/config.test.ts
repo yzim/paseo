@@ -19,17 +19,7 @@ describe("server config", () => {
       resolveBundledWebUiDistDir(
         pathToFileURL(path.join(root, "repo", "packages", "server", "src", "server", "config.ts")),
       ),
-    ).toBe(
-      path.join(
-        root,
-        "repo",
-        "packages",
-        "server",
-        "dist",
-        "server",
-        "web-ui",
-      ),
-    );
+    ).toBe(path.join(root, "repo", "packages", "server", "dist", "server", "web-ui"));
   });
 
   test("resolves bundled web UI path from globally installed compiled modules", async () => {
@@ -39,9 +29,7 @@ describe("server config", () => {
 
     expect(
       resolveBundledWebUiDistDir(
-        pathToFileURL(
-          path.join(packageRoot, "dist", "server", "server", "config.js"),
-        ),
+        pathToFileURL(path.join(packageRoot, "dist", "server", "server", "config.js")),
       ),
     ).toBe(path.join(packageRoot, "dist", "server", "web-ui"));
   });

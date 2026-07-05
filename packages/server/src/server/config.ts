@@ -42,13 +42,13 @@ export function resolveBundledWebUiDistDir(moduleUrl: string | URL = import.meta
   ) {
     const appDistDir =
       typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath === "string"
-        ? path.join((process as NodeJS.Process & { resourcesPath?: string }).resourcesPath!, "app-dist")
+        ? path.join(
+            (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath!,
+            "app-dist",
+          )
         : null;
 
-    if (
-      appDistDir &&
-      existsSync(appDistDir)
-    ) {
+    if (appDistDir && existsSync(appDistDir)) {
       // Packaged desktop/CLI builds execute the server from app.asar and bundle the Web UI in app-dist.
       return appDistDir;
     }

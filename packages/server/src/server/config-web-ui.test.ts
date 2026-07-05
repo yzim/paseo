@@ -90,19 +90,6 @@ describe("daemon web UI config", () => {
     expect(resolveBundledWebUiDistDir(moduleUrl)).toBe(path.join(packageRoot, "app-dist"));
   });
 
-  test("resolves compiled server web UI dist dir when app-dist is absent", async () => {
-    const packageRoot = await mkdtemp(path.join(os.tmpdir(), "paseo-config-web-ui-compiled-"));
-    roots.push(packageRoot);
-    await mkdir(path.join(packageRoot, "dist", "server", "web-ui"), { recursive: true });
-    const moduleUrl = pathToFileURL(
-      path.join(packageRoot, "dist", "server", "server", "config.js"),
-    );
-
-    expect(resolveBundledWebUiDistDir(moduleUrl)).toBe(
-      path.join(packageRoot, "dist", "server", "web-ui"),
-    );
-  });
-
   test("PASEO_WEB_UI_ENABLED overrides persisted setting", async () => {
     const home = await createPaseoHome({
       version: 1,

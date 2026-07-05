@@ -1,22 +1,27 @@
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
 import { resolveBundledWebUiDistDir } from "./config.js";
 
-function fileUrlFor(...segments: string[]): URL {
-  return pathToFileURL(path.join(path.parse(process.cwd()).root, ...segments));
-}
+const roots: string[] = [];
 
 describe("server config", () => {
+  afterEach(async () => {
+    await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  });
+
   test("resolves bundled web UI path from source-tree modules", () => {
+    const root = path.parse(process.cwd()).root;
     expect(
       resolveBundledWebUiDistDir(
-        fileUrlFor("repo", "packages", "server", "src", "server", "config.ts"),
+        pathToFileURL(path.join(root, "repo", "packages", "server", "src", "server", "config.ts")),
       ),
     ).toBe(
       path.join(
-        path.parse(process.cwd()).root,
+        root,
         "repo",
         "packages",
         "server",
@@ -27,35 +32,17 @@ describe("server config", () => {
     );
   });
 
-  test("resolves bundled web UI path from globally installed compiled modules", () => {
+  test("resolves bundled web UI path from globally installed compiled modules", async () => {
+    const packageRoot = await mkdtemp(path.join(os.tmpdir(), "paseo-config-compiled-"));
+    roots.push(packageRoot);
+    await mkdir(path.join(packageRoot, "dist", "server", "web-ui"), { recursive: true });
+
     expect(
       resolveBundledWebUiDistDir(
-        fileUrlFor(
-          "usr",
-          "local",
-          "lib",
-          "node_modules",
-          "@getpaseo",
-          "server",
-          "dist",
-          "server",
-          "server",
-          "config.js",
+        pathToFileURL(
+          path.join(packageRoot, "dist", "server", "server", "config.js"),
         ),
       ),
-    ).toBe(
-      path.join(
-        path.parse(process.cwd()).root,
-        "usr",
-        "local",
-        "lib",
-        "node_modules",
-        "@getpaseo",
-        "server",
-        "dist",
-        "server",
-        "web-ui",
-      ),
-    );
+    ).toBe(path.join(packageRoot, "dist", "server", "web-ui"));
   });
 });

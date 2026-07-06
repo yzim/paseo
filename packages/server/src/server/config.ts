@@ -28,7 +28,13 @@ const DEFAULT_RELAY_ENDPOINT = "relay.paseo.sh:443";
 const DEFAULT_APP_BASE_URL = "https://app.paseo.sh";
 const DEFAULT_TRUSTED_PROXIES = ["loopback"];
 
-export function resolveBundledWebUiDistDir(moduleUrl: string | URL = import.meta.url): string {
+interface ResolveBundledWebUiDistDirInput {
+  moduleUrl?: string | URL;
+  resourcesPath?: string;
+}
+
+export function resolveBundledWebUiDistDir(input: ResolveBundledWebUiDistDirInput = {}): string {
+  const moduleUrl = input.moduleUrl ?? import.meta.url;
   const moduleDir = path.dirname(fileURLToPath(moduleUrl));
 
   if (path.basename(moduleDir) === "server" && path.basename(path.dirname(moduleDir)) === "src") {
@@ -40,12 +46,9 @@ export function resolveBundledWebUiDistDir(moduleUrl: string | URL = import.meta
     path.basename(path.dirname(moduleDir)) === "server" &&
     path.basename(path.dirname(path.dirname(moduleDir))) === "dist"
   ) {
-    const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
-    const appDistDir =
-      typeof resourcesPath === "string" ? path.join(resourcesPath, "app-dist") : null;
+    const appDistDir = input.resourcesPath ? path.join(input.resourcesPath, "app-dist") : null;
 
     if (appDistDir && existsSync(appDistDir)) {
-      // Packaged desktop/CLI builds execute the server from app.asar and bundle the Web UI in app-dist.
       return appDistDir;
     }
 
@@ -55,7 +58,10 @@ export function resolveBundledWebUiDistDir(moduleUrl: string | URL = import.meta
   return path.resolve(moduleDir, "web-ui");
 }
 
-const BUNDLED_WEB_UI_DIST_DIR = resolveBundledWebUiDistDir();
+const processResourcesPath = "resourcesPath" in process ? process.resourcesPath : undefined;
+const BUNDLED_WEB_UI_DIST_DIR = resolveBundledWebUiDistDir({
+  resourcesPath: typeof processResourcesPath === "string" ? processResourcesPath : undefined,
+});
 
 function parseBooleanEnv(value: string | undefined): boolean | undefined {
   if (value === undefined) {

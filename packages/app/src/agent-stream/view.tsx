@@ -369,6 +369,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const [expandedInlineToolCallIds, setExpandedInlineToolCallIds] = useState<Set<string>>(
       new Set(),
     );
+    const [inlineToolCallExpansionById, setInlineToolCallExpansionById] = useState<
+      Map<string, boolean>
+    >(new Map());
     const [expandedToolCallGroupIds, setExpandedToolCallGroupIds] = useState<Set<string>>(
       new Set(),
     );
@@ -435,6 +438,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     useEffect(() => {
       setIsNearBottom(true);
       setExpandedInlineToolCallIds(new Set());
+      setInlineToolCallExpansionById(new Map());
       setExpandedToolCallGroupIds(new Set());
     }, [agentId]);
 
@@ -670,6 +674,17 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       });
     }, []);
 
+    const setInlineDetailsUserExpanded = useCallback((itemId: string, expanded: boolean) => {
+      if (!isNative) {
+        return;
+      }
+      setInlineToolCallExpansionById((previous) => {
+        const next = new Map(previous);
+        next.set(itemId, expanded);
+        return next;
+      });
+    }, []);
+
     const setToolCallGroupExpanded = useCallback((groupId: string, expanded: boolean) => {
       setExpandedToolCallGroupIds((previous) => {
         const next = new Set(previous);
@@ -744,14 +759,20 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           <ThoughtSlot
             itemId={item.id}
             onInlineDetailsExpandedChangeByItemId={setInlineDetailsExpanded}
+            onInlineDetailsUserExpandedChangeByItemId={setInlineDetailsUserExpanded}
             text={item.text}
             status={item.status}
             isLastInSequence={layoutItem.isLastInToolSequence}
-            defaultExpanded={autoExpandReasoning || expandedInlineToolCallIds.has(item.id)}
+            defaultExpanded={inlineToolCallExpansionById.get(item.id) ?? autoExpandReasoning}
           />
         );
       },
-      [autoExpandReasoning, expandedInlineToolCallIds, setInlineDetailsExpanded],
+      [
+        autoExpandReasoning,
+        inlineToolCallExpansionById,
+        setInlineDetailsExpanded,
+        setInlineDetailsUserExpanded,
+      ],
     );
 
     const renderSingleToolCallItem = useCallback(
@@ -780,7 +801,8 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
             <ToolCallSlot
               itemId={item.id}
               onInlineDetailsExpandedChangeByItemId={setInlineDetailsExpanded}
-              defaultExpanded={expandedInlineToolCallIds.has(item.id)}
+              onInlineDetailsUserExpandedChangeByItemId={setInlineDetailsUserExpanded}
+              defaultExpanded={inlineToolCallExpansionById.get(item.id) ?? false}
               toolName={data.name}
               error={data.error}
               status={data.status}
@@ -799,7 +821,8 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           <ToolCallSlot
             itemId={item.id}
             onInlineDetailsExpandedChangeByItemId={setInlineDetailsExpanded}
-            defaultExpanded={expandedInlineToolCallIds.has(item.id)}
+            onInlineDetailsUserExpandedChangeByItemId={setInlineDetailsUserExpanded}
+            defaultExpanded={inlineToolCallExpansionById.get(item.id) ?? false}
             toolName={data.toolName}
             args={data.arguments}
             result={data.result}
@@ -810,7 +833,13 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           />
         );
       },
-      [context.cwd, expandedInlineToolCallIds, handleToolCallOpenFile, setInlineDetailsExpanded],
+      [
+        context.cwd,
+        inlineToolCallExpansionById,
+        handleToolCallOpenFile,
+        setInlineDetailsExpanded,
+        setInlineDetailsUserExpanded,
+      ],
     );
 
     // Read through a stable event so live group updates do not change the renderer identity
@@ -1079,13 +1108,17 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const streamScrollEnabled =
       !streamRenderStrategy.shouldDisableParentScrollOnInlineDetailsExpansion() ||
       expandedInlineToolCallIds.size === 0;
+    const inlineDetailsDisplayStateById = useMemo(
+      () => new Set([...expandedToolCallGroupIds, ...inlineToolCallExpansionById.keys()]),
+      [expandedToolCallGroupIds, inlineToolCallExpansionById],
+    );
     const historyRowRevision = useMemo(
       () => ({
         contentById: presentation.historyGroupUpdatesByHostId,
-        displayStateById: expandedToolCallGroupIds,
+        displayStateById: inlineDetailsDisplayStateById,
         globalDisplayState: isMobile,
       }),
-      [expandedToolCallGroupIds, isMobile, presentation.historyGroupUpdatesByHostId],
+      [inlineDetailsDisplayStateById, isMobile, presentation.historyGroupUpdatesByHostId],
     );
 
     const findItems = useMemo(
@@ -1109,7 +1142,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
                 agentId,
                 segments: renderModel.segments,
                 historyRowRevision,
-                liveHeadRowRevision: expandedToolCallGroupIds,
+                liveHeadRowRevision: inlineDetailsDisplayStateById,
                 boundary,
                 renderers,
                 listEmptyComponent,
@@ -1280,15 +1313,17 @@ AgentStreamView.displayName = "AgentStreamView";
 
 interface ToolCallSlotProps extends Omit<
   ComponentProps<typeof ToolCall>,
-  "onInlineDetailsExpandedChange"
+  "onInlineDetailsExpandedChange" | "onInlineDetailsUserExpandedChange"
 > {
   itemId: string;
   onInlineDetailsExpandedChangeByItemId: (itemId: string, expanded: boolean) => void;
+  onInlineDetailsUserExpandedChangeByItemId: (itemId: string, expanded: boolean) => void;
 }
 
 interface ThoughtSlotProps {
   itemId: string;
   onInlineDetailsExpandedChangeByItemId: (itemId: string, expanded: boolean) => void;
+  onInlineDetailsUserExpandedChangeByItemId: (itemId: string, expanded: boolean) => void;
   text: string;
   status: Extract<StreamItem, { kind: "thought" }>["status"];
   isLastInSequence: boolean;
@@ -1299,6 +1334,7 @@ interface ThoughtSlotProps {
 function ThoughtSlot({
   itemId,
   onInlineDetailsExpandedChangeByItemId,
+  onInlineDetailsUserExpandedChangeByItemId,
   text,
   status,
   isLastInSequence,
@@ -1309,6 +1345,7 @@ function ThoughtSlot({
     <ToolCallSlot
       itemId={itemId}
       onInlineDetailsExpandedChangeByItemId={onInlineDetailsExpandedChangeByItemId}
+      onInlineDetailsUserExpandedChangeByItemId={onInlineDetailsUserExpandedChangeByItemId}
       toolName="thinking"
       args={revealedText}
       status={status === "ready" ? "completed" : "executing"}
@@ -1322,13 +1359,24 @@ function ThoughtSlot({
 function ToolCallSlot({
   itemId,
   onInlineDetailsExpandedChangeByItemId,
+  onInlineDetailsUserExpandedChangeByItemId,
   ...rest
 }: ToolCallSlotProps) {
   const handleExpandedChange = useCallback(
     (expanded: boolean) => onInlineDetailsExpandedChangeByItemId(itemId, expanded),
     [onInlineDetailsExpandedChangeByItemId, itemId],
   );
-  return <ToolCall {...rest} onInlineDetailsExpandedChange={handleExpandedChange} />;
+  const handleUserExpandedChange = useCallback(
+    (expanded: boolean) => onInlineDetailsUserExpandedChangeByItemId(itemId, expanded),
+    [onInlineDetailsUserExpandedChangeByItemId, itemId],
+  );
+  return (
+    <ToolCall
+      {...rest}
+      onInlineDetailsExpandedChange={handleExpandedChange}
+      onInlineDetailsUserExpandedChange={handleUserExpandedChange}
+    />
+  );
 }
 
 const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);

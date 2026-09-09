@@ -3035,6 +3035,7 @@ interface ToolCallProps {
   disableOuterSpacing?: boolean;
   onInlineDetailsHoverChange?: (hovered: boolean) => void;
   onInlineDetailsExpandedChange?: (expanded: boolean) => void;
+  onInlineDetailsUserExpandedChange?: (expanded: boolean) => void;
   onOpenFilePath?: (filePath: string) => void;
   defaultExpanded?: boolean;
   forceInline?: boolean;
@@ -3054,6 +3055,7 @@ export const ToolCall = memo(function ToolCall({
   disableOuterSpacing,
   onInlineDetailsHoverChange,
   onInlineDetailsExpandedChange,
+  onInlineDetailsUserExpandedChange,
   onOpenFilePath,
   defaultExpanded,
   forceInline = false,
@@ -3112,7 +3114,9 @@ export const ToolCall = memo(function ToolCall({
         showLoadingSkeleton: presentation.isLoadingDetails,
       });
     } else {
-      setIsExpanded((prev) => !prev);
+      const next = !isExpanded;
+      setIsExpanded(next);
+      onInlineDetailsUserExpandedChange?.(next);
     }
   }, [
     shouldRenderInline,
@@ -3124,6 +3128,8 @@ export const ToolCall = memo(function ToolCall({
     presentation.icon,
     presentation.isLoadingDetails,
     effectiveDetail,
+    isExpanded,
+    onInlineDetailsUserExpandedChange,
   ]);
 
   useEffect(() => {
@@ -3216,6 +3222,9 @@ function areToolCallPropsEqual(previous: ToolCallProps, next: ToolCallProps) {
   if (previous.isLastInSequence !== next.isLastInSequence) return false;
   if (previous.disableOuterSpacing !== next.disableOuterSpacing) return false;
   if (previous.onOpenFilePath !== next.onOpenFilePath) return false;
+  if (previous.onInlineDetailsUserExpandedChange !== next.onInlineDetailsUserExpandedChange) {
+    return false;
+  }
   if (previous.defaultExpanded !== next.defaultExpanded) return false;
   if (previous.forceInline !== next.forceInline) return false;
   if (previous.maxDetailHeight !== next.maxDetailHeight) return false;

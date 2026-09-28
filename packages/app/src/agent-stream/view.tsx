@@ -224,20 +224,29 @@ function renderListEmptyComponent(input: {
 // identity, or the renderer itself changes. Item identity is the revision signal the strategy
 // already uses (`useRevisedHistoryRows` clones items whose content or display state changed).
 const HistoryStreamRow = memo(function HistoryStreamRow({
+  item,
   layoutItem,
   renderStreamItem,
+  layoutRevision,
 }: {
   item: StreamItem;
   layoutItem: StreamLayoutItem;
   renderStreamItem: (layoutItem: StreamLayoutItem) => ReactNode;
+  layoutRevision?: number;
 }) {
-  return <>{renderStreamItem(layoutItem)}</>;
+  const content = renderStreamItem(layoutItem);
+  // Only remount Markdown content. Tool calls and thoughts keep their local expansion state.
+  if (item.kind === "assistant_message" && layoutRevision !== undefined) {
+    return <React.Fragment key={layoutRevision}>{content}</React.Fragment>;
+  }
+  return content;
 });
 
 function renderHistoryStreamItem(input: {
   item: StreamItem;
   layoutItemById: Map<string, StreamLayoutItem>;
   renderStreamItem: (layoutItem: StreamLayoutItem) => ReactNode;
+  layoutRevision?: number;
 }): ReactNode {
   const layoutItem = input.layoutItemById.get(input.item.id);
   if (!layoutItem) {
@@ -248,6 +257,7 @@ function renderHistoryStreamItem(input: {
       item={input.item}
       layoutItem={layoutItem}
       renderStreamItem={input.renderStreamItem}
+      layoutRevision={input.layoutRevision}
     />
   );
 }
@@ -1022,20 +1032,24 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     });
 
     const renderHistoryRow = useCallback(
-      (item: StreamItem) =>
+      (item: StreamItem, layoutRevision?: number) =>
         renderHistoryStreamItem({
           item,
           layoutItemById: layoutHistoryItemById,
           renderStreamItem,
+          layoutRevision,
         }),
       [layoutHistoryItemById, renderStreamItem],
     );
 
     const renderHistoryVirtualizedRow = useCallback<
       StreamSegmentRenderers["renderHistoryVirtualizedRow"]
-    >((item) => renderHistoryRow(item), [renderHistoryRow]);
+    >(
+      (item, _index, _items, layoutRevision) => renderHistoryRow(item, layoutRevision),
+      [renderHistoryRow],
+    );
     const renderHistoryMountedRow = useCallback<StreamSegmentRenderers["renderHistoryMountedRow"]>(
-      (item) => renderHistoryRow(item),
+      (item, _index, _items, layoutRevision) => renderHistoryRow(item, layoutRevision),
       [renderHistoryRow],
     );
     // useStableEvent keeps the function reference stable across flushes.

@@ -515,7 +515,7 @@ function NativeStreamViewport(props: StreamRenderInput & { strategy: StreamStrat
 
   const renderItem = useStableEvent(
     ({ item, index }: ListRenderItemInfo<StreamItem>): ReactElement | null => {
-      const rendered = renderHistoryMountedRow(item, index, historyItems);
+      const rendered = renderHistoryMountedRow(item, index, historyItems, layoutRevision);
       return (rendered ?? null) as ReactElement | null;
     },
   );

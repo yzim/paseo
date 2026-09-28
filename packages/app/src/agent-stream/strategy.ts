@@ -57,8 +57,18 @@ export interface StreamViewportHandle {
 }
 
 export interface StreamSegmentRenderers {
-  renderHistoryVirtualizedRow: (item: StreamItem, index: number, items: StreamItem[]) => ReactNode;
-  renderHistoryMountedRow: (item: StreamItem, index: number, items: StreamItem[]) => ReactNode;
+  renderHistoryVirtualizedRow: (
+    item: StreamItem,
+    index: number,
+    items: StreamItem[],
+    layoutRevision?: number,
+  ) => ReactNode;
+  renderHistoryMountedRow: (
+    item: StreamItem,
+    index: number,
+    items: StreamItem[],
+    layoutRevision?: number,
+  ) => ReactNode;
   renderLiveHeadRow: (item: StreamItem, index: number, items: StreamItem[]) => ReactNode;
   renderLiveAuxiliary: () => ReactNode;
 }

@@ -67,6 +67,8 @@ export interface StreamHistoryRowRevision {
   contentById: { has(id: string): boolean };
   displayStateById: { has(id: string): boolean };
   globalDisplayState: boolean;
+  /** Changes when the native viewport width changes and rows need to measure again. */
+  layoutRevision?: number;
 }
 
 export interface StreamRenderInput {

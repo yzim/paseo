@@ -30,11 +30,16 @@ export function useRevisedHistoryRows(
   revision: StreamHistoryRowRevision | undefined,
 ): StreamItem[] {
   const globalDisplayState = revision?.globalDisplayState ?? false;
+  const layoutRevision = revision?.layoutRevision ?? 0;
   const displayStateById = revision?.displayStateById;
   const contentById = revision?.contentById;
   const globallyRevisedRows = useMemo(
-    () => items.map((item) => getHistoryRowDisplayVariant(item, globalDisplayState)),
-    [items, globalDisplayState],
+    () =>
+      items.map((item) => {
+        const displayItem = getHistoryRowDisplayVariant(item, globalDisplayState);
+        return layoutRevision === 0 ? displayItem : { ...displayItem };
+      }),
+    [items, globalDisplayState, layoutRevision],
   );
   const displayStateRevisedRows = useMemo(
     () => globallyRevisedRows.map((item) => (displayStateById?.has(item.id) ? { ...item } : item)),

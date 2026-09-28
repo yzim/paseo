@@ -113,6 +113,7 @@ function NativeStreamViewport(props: StreamRenderInput & { strategy: StreamStrat
   const [historyStartPaginationState, setHistoryStartPaginationState] = useState(
     createHistoryStartPaginationState,
   );
+  const [layoutRevision, setLayoutRevision] = useState(0);
   const historyStartPaginationStateRef = useRef(historyStartPaginationState);
   const historyStartSettleSchedulerRef = useRef<HistoryStartSettleScheduler | null>(null);
 
@@ -122,7 +123,10 @@ function NativeStreamViewport(props: StreamRenderInput & { strategy: StreamStrat
     }
     return [...segments.historyVirtualized, ...segments.historyMounted];
   }, [segments.historyMounted, segments.historyVirtualized]);
-  const historyRows = useRevisedHistoryRows(historyItems, historyRowRevision);
+  const historyRows = useRevisedHistoryRows(
+    historyItems,
+    historyRowRevision ? { ...historyRowRevision, layoutRevision } : undefined,
+  );
   const getHistoryStartPaginationInput = useStableEvent((): HistoryStartPaginationInput => {
     const metrics = streamViewportMetricsRef.current;
     const hasMeasuredViewport =
@@ -462,6 +466,9 @@ function NativeStreamViewport(props: StreamRenderInput & { strategy: StreamStrat
       viewportHeight,
       viewportMeasuredForKey: "native-virtualized",
     };
+    if (previousViewportWidth !== viewportWidth) {
+      setLayoutRevision(viewportWidth);
+    }
     if (viewportChanged) {
       markNativeViewportSettling();
     }
